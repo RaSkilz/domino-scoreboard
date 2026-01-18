@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Domino Tournament – Ref Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #0f0f0f;
+      color: #fff;
+      margin: 0;
+      padding: 16px;
+    }
+
+    h1, h2 {
+      margin: 10px 0;
+      text-align: center;
+    }
+
+    .section {
+      background: #1b1b1b;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: none;
+    }
+
+    input, select {
+      background: #2b2b2b;
+      color: #fff;
+    }
+
+    button {
+      background: #2f7cff;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    button.danger {
+      background: #b00020;
+    }
+
+    button.secondary {
+      background: #444;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .score-buttons button {
+      flex: 1;
+    }
+
+    .bracket {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .player-box {
+      background: #2a2a2a;
+      padding: 12px;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .active {
+      outline: 3px solid #2f7cff;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Domino Tournament Control</h1>
+
+<div class="section">
+  <h2>Current Match</h2>
+  <div class="row">
+    <input id="p1Name" placeholder="Player 1 Name" />
+    <input id="p2Name" placeholder="Player 2 Name" />
+  </div>
+</div>
+
+<div class="section">
+  <h2>Score Control</h2>
+  <div class="row score-buttons">
+    <button onclick="add('p1')">P1 +5</button>
+    <button onclick="sub('p1')">P1 -5</button>
+    <button onclick="add('p2')">P2 +5</button>
+    <button onclick="sub('p2')">P2 -5</button>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Game Control</h2>
+  <div class="row">
+    <button class="secondary" onclick="undo()">Undo Last</button>
+    <button class="danger" onclick="resetGame()">Reset Game</button>
+  </div>
+</div>
+
+<div class="section">
+  <h2>8-Player Tournament Bracket</h2>
+  <div class="bracket" id="bracket"></div>
+</div>
+
+<script>
+  const config = { step: 5, max: 150 };
+
+  const state = {
+    p1: { score: 0, games: 0, name: 'Player 1' },
+    p2: { score: 0, games: 0, name: 'Player 2' },
+    history: [],
+    bracket: Array(8).fill('')
+  };
+
+  function sync() {
+    localStorage.setItem('dominoState', JSON.stringify(state));
+  }
+
+  function add(p) {
+    state.history.push(JSON.stringify(state));
+    state[p].score += config.step;
+    if (state[p].score >= config.max) {
+      state[p].score = 0;
+      state[p === 'p1' ? 'p2' : 'p1'].score = 0;
+      state[p].games++;
+    }
+    sync();
+  }
+
+  function sub(p) {
+    state.history.push(JSON.stringify(state));
+    state[p].score = Math.max(0, state[p].score - config.step);
+    sync();
+  }
+
+  function undo() {
+    if (!state.history.length) return;
+    const prev = JSON.parse(state.history.pop());
+    Object.assign(state, prev);
+    sync();
+  }
+
+  function resetGame() {
+    state.history.push(JSON.stringify(state));
+    state.p1.score = 0;
+    state.p2.score = 0;
+    sync();
+  }
+
+  function renderBracket() {
+    const el = document.getElementById('bracket');
+    el.innerHTML = '';
+    state.bracket.forEach((name, i) => {
+      const d = document.createElement('div');
+      d.className = 'player-box';
+      d.textContent = name || `Seed ${i + 1}`;
+      d.onclick = () => {
+        if (!state.p1.name) state.p1.name = d.textContent;
+        else state.p2.name = d.textContent;
+        sync();
+      };
+      el.appendChild(d);
+    });
+  }
+
+  document.getElementById('p1Name').oninput = e => {
+    state.p1.name = e.target.value;
+    sync();
+  };
+
+  document.getElementById('p2Name').oninput = e => {
+    state.p2.name = e.target.value;
+    sync();
+  };
+
+  renderBracket();
+</script>
+
+</body>
+</html>
